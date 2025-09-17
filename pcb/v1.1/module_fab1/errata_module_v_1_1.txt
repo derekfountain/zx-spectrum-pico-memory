@@ -1,0 +1,5 @@
+ZX Pico Memory Module V1.1 Errata
+
+1. J22 is 0.1" too low and doesn't line up with the DRAM 5V pin. Bend pin
+   to get it to fit.
+
