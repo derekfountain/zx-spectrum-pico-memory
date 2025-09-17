@@ -1,0 +1,47 @@
+RAS received, address bus: 0x00
+CAS received, address bus: 0x00
+Address requested: 0 (0x0000)
+This is a read
+Read:  fetched from store 0x03000000
+Read:  returning value    0x00
+CAS received, address bus: 0x00
+Address requested: 0 (0x0000)
+This is a read
+Read:  fetched from store 0x03000000
+Read:  returning value    0x00
+CAS received, address bus: 0x00
+Address requested: 0 (0x0000)
+This is a read
+Read:  fetched from store 0x03000000
+Read:  returning value    0x00
+CAS received, address bus: 0x00
+Address requested: 0 (0x0000)
+This is a read
+Read:  fetched from store 0x03000000
+Read:  returning value    0x00
+
+
+Top of loop, waiting for RAS...
+RAS received, address bus: 0x00
+Refresh cycle detected, ignored it
+
+
+Top of loop, waiting for RAS...
+RAS received, address bus: 0x00
+CAS received, address bus: 0x00
+Address requested: 0 (0x0000)
+This is a read
+Read:  fetched from store 0x03000000
+Read:  returning value    0x00
+
+
+Top of loop, waiting for RAS...
+RAS received, address bus: 0x00
+CAS received, address bus: 0x00
+Address requested: 0 (0x0000)
+This is a write
+Write: recevied  value 0x00
+Write: storing   value 0x03000000
+
+
+Top of loop, waiting for RAS...
