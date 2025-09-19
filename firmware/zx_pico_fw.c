@@ -183,35 +183,27 @@ int main()
   /* D0 comes from IC6 on the ZX PCB */
   gpio_init( D0_GP );
   gpio_set_slew_rate(D0_GP, GPIO_SLEW_RATE_FAST);
-  gpio_set_drive_strength(D0_GP, GPIO_DRIVE_STRENGTH_12MA);
 
   gpio_init( D1_GP );
   gpio_set_slew_rate(D1_GP, GPIO_SLEW_RATE_FAST);
-  gpio_set_drive_strength(D1_GP, GPIO_DRIVE_STRENGTH_12MA);
 
   gpio_init( D2_GP );
   gpio_set_slew_rate(D2_GP, GPIO_SLEW_RATE_FAST);
-  gpio_set_drive_strength(D2_GP, GPIO_DRIVE_STRENGTH_12MA);
 
   gpio_init( D3_GP );
   gpio_set_slew_rate(D3_GP, GPIO_SLEW_RATE_FAST);
-  gpio_set_drive_strength(D3_GP, GPIO_DRIVE_STRENGTH_12MA);
 
   gpio_init( D4_GP );
   gpio_set_slew_rate(D4_GP, GPIO_SLEW_RATE_FAST);
-  gpio_set_drive_strength(D4_GP, GPIO_DRIVE_STRENGTH_12MA);
 
   gpio_init( D5_GP );
   gpio_set_slew_rate(D5_GP, GPIO_SLEW_RATE_FAST);
-  gpio_set_drive_strength(D5_GP, GPIO_DRIVE_STRENGTH_12MA);
 
   gpio_init( D6_GP );
   gpio_set_slew_rate(D6_GP, GPIO_SLEW_RATE_FAST);
-  gpio_set_drive_strength(D6_GP, GPIO_DRIVE_STRENGTH_12MA);
 
   gpio_init( D7_GP );
   gpio_set_slew_rate(D7_GP, GPIO_SLEW_RATE_FAST);
-  gpio_set_drive_strength(D7_GP, GPIO_DRIVE_STRENGTH_12MA);
 
   /* The control signals are active low, so pull them high */
   gpio_init( RAS_GP ); gpio_set_dir(RAS_GP, GPIO_IN); gpio_pull_up( RAS_GP );
