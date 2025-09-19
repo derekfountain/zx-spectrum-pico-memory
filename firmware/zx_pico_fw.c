@@ -270,21 +270,87 @@ int main()
 
         /* Data is available, 120ns (360MHz), 130ns (270MHz) after CAS. Question mark on the 360MHZ value here */
        
-/* Target is to have the data on the bus at 216ns after CAS */
-/* 141ns after CAS - data is already available. We have about 75ns spare here. */
-//gpio_put( TEST_OUTPUT_GP, 1 ); busy_wait_us_32(5);
-//gpio_put( TEST_OUTPUT_GP, 0 );
-
 	/* Wait for CAS to go high indicating ZX has picked up the data */
-	while( (gpio_get_all() & CAS_GP_MASK) == 0 );
-gpio_put( TEST_OUTPUT_GP, 1 );
-__asm volatile ("nop");
-gpio_put( TEST_OUTPUT_GP, 0 );
+//	while( (gpio_get_all() & CAS_GP_MASK) == 0 );
+// 70 NOPs at 270MHz makes the Z80 work again, that's 259ns
 
-/* 242ns after CAS - data about to be removed from the bus. */
-/* That's correct, it was there at the 216ns after CAS point when dataLatch occurred */
-//gpio_put( TEST_OUTPUT_GP, 1 ); busy_wait_us_32(5);
-//gpio_put( TEST_OUTPUT_GP, 0 );
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+__asm volatile ("nop");
+
 
 	/* Switch the data bus GPIOs back to pointing from ZX toward the pico */
 	gpio_set_dir_in_masked( DBUS_GP_MASK );
@@ -293,10 +359,6 @@ gpio_put( TEST_OUTPUT_GP, 0 );
 	gpio_put(DIR_GP, 1);
 
 	/* 245ns (360MHz) after CAS fell, 40ns after CAS rose again */
-
-/* 264ns after CAS - data is removed from the bus and we're going to wait for CAS again. */
-//gpio_put( TEST_OUTPUT_GP, 1 ); busy_wait_us_32(5);
-//gpio_put( TEST_OUTPUT_GP, 0 );
 
 /* CAS will fall again 288ns after the original fall. That's about 24ns from now. */
 __asm volatile ("nop"); // 1 NOP leave the (c) ok, so Z80 still working
@@ -373,5 +435,11 @@ gpio_put( TEST_OUTPUT_GP, 0 ); busy_wait_us_32(5);
 gpio_put( TEST_OUTPUT_GP, 1 ); busy_wait_us_32(1000);
 gpio_put( TEST_OUTPUT_GP, 0 ); busy_wait_us_32(1000);
 __asm volatile ("nop");
+
+
+gpio_put( TEST_OUTPUT_GP, 1 );
+__asm volatile ("nop");
+gpio_put( TEST_OUTPUT_GP, 0 );
+
 #endif
 
