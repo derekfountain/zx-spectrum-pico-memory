@@ -116,10 +116,6 @@ const uint32_t WR_GP_MASK    = (1<<WR_GP);
 const uint32_t STROBE_MASK   = (RAS_GP_MASK | CAS_GP_MASK);
 const uint32_t DIR_GP_MASK   = (1<<DIR_GP);
 
-const uint8_t CE_A_GP        = 20;  /* Chip enable for level shifter U2, control lines */
-const uint8_t CE_B_GP        = 21;  /* Chip enable for level shifter U3, data bus lines */
-const uint8_t CE_C_GP        = 22;  /* Chip enable for level shifter U4, address bus lines */
-
 const uint8_t TEST_INPUT_GP  = 28;  /* Only use one of these */
 const uint8_t TEST_OUTPUT_GP = 28;
 
@@ -169,11 +165,6 @@ int main()
     busy_wait_us_32(250000);
   }
   gpio_put(LED_PIN, 1);
-
-  /* Turn the level shifters on by pulling their chip enable lines low */
-  gpio_init(CE_A_GP); gpio_set_dir(CE_A_GP, GPIO_OUT); gpio_put(CE_A_GP, 0);
-  gpio_init(CE_B_GP); gpio_set_dir(CE_B_GP, GPIO_OUT); gpio_put(CE_B_GP, 0);
-  gpio_init(CE_C_GP); gpio_set_dir(CE_C_GP, GPIO_OUT); gpio_put(CE_C_GP, 0);
 
   /* Pull the buses to zeroes */
   gpio_init( A0_GP ); gpio_set_dir(A0_GP, GPIO_IN); gpio_pull_down( A0_GP );
