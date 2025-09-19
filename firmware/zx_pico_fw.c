@@ -229,71 +229,69 @@ int main()
     while( (previous_gpios & (~ ((gpios_state = gpio_get_all()) ) & STROBE_MASK )) == 0 )
       previous_gpios = gpios_state;
   
+    /* This condition is 2 instructions */
+    if( ((gpios_state & CAS_GP_MASK) == 0) )
     {
-    
-      /* This condition is 2 instructions */
-      if( ((gpios_state & CAS_GP_MASK) == 0) )
-      {
-	/* 40ns (360MHz) after CAS */
+      /* 40ns (360MHz) after CAS */
 
-	/* CAS low edge found. */
+      /* CAS low edge found. */
+
+      /*
+       * Column address is on the address bus. Add that to the row address we've
+       * already got (and already done the multiply on) and we now have the whole
+       * address of the relevant data in our store.
+       */
+
+      /* gpios_state is from the point CAS went low */
+      if( gpios_state & WR_GP_MASK )
+      {
+	/*
+	 * We know this is a read. Get the data from store and get it on the bus before
+	 * CAS goes back up
+	 */
+	  
+	/* 50ns (360MHz) after CAS */
+	  
+	/* Prime the level shifters to send to the ZX. gpio_put(DIR_GP, 0); required, clr_mask is faster */
+	gpio_clr_mask(DIR_GP_MASK);
+
+	/* 55ns (360MHz) after CAS */
 
 	/*
-	 * Column address is on the address bus. Add that to the row address we've
-	 * already got (and already done the multiply on) and we now have the whole
-	 * address of the relevant data in our store.
+	 * Switch the data bus GPIOs to point towards the ZX - we do this last to prevent
+	 * pico outputs driving the shifter while that's still in output mode
 	 */
+	gpio_set_dir_out_masked( DBUS_GP_MASK );
 
-	/* gpios_state is from the point CAS went low */
-	if( gpios_state & WR_GP_MASK )
-	{
-	  /*
-	   * We know this is a read. Get the data from store and get it on the bus before
-	   * CAS goes back up
-	   */
-	  
-	  /* 50ns (360MHz) after CAS */
-	  
-	  /* Prime the level shifters to send to the ZX. gpio_put(DIR_GP, 0); required, clr_mask is faster */
-	  gpio_clr_mask(DIR_GP_MASK);
+	/* 60ns (360MHz) after CAS */
 
-	  /* 55ns (360MHz) after CAS */
+	/* Put the stored value on the output data bus */
+	gpio_put_masked( DBUS_GP_MASK, *(store_ptr+(addr_requested + (uint8_t)(gpios_state & ADDR_GP_MASK))) );
 
-	  /*
-	   * Switch the data bus GPIOs to point towards the ZX - we do this last to prevent
-	   * pico outputs driving the shifter while that's still in output mode
-	   */
-	  gpio_set_dir_out_masked( DBUS_GP_MASK );
+	/* Data is available - 4116 spec says we need to be here within 100ns of CAS going low. */
 
-	  /* 60ns (360MHz) after CAS */
-
-	  /* Put the stored value on the output data bus */
-	  gpio_put_masked( DBUS_GP_MASK, *(store_ptr+(addr_requested + (uint8_t)(gpios_state & ADDR_GP_MASK))) );
-
-	  /* Data is available - 4116 spec says we need to be here within 100ns of CAS going low. */
-
-	  /* 120ns (360MHz) after CAS */
+	/* 120ns (360MHz) after CAS */
        
 /* Target is to have the data on the bus at 216ns after CAS */
 /* 141ns after CAS - data is already available. We have about 75ns spare here. */
 //gpio_put( TEST_OUTPUT_GP, 1 ); busy_wait_us_32(5);
 //gpio_put( TEST_OUTPUT_GP, 0 );
 
-          /* Wait for CAS to go high indicating ZX has picked up the data */
-          while( (gpio_get_all() & CAS_GP_MASK) == 0 );
+	/* Wait for CAS to go high indicating ZX has picked up the data */
+	while( (gpio_get_all() & CAS_GP_MASK) == 0 );
 
 /* 242ns after CAS - data about to be removed from the bus. */
 /* That's correct, it was there at the 216ns after CAS point when dataLatch occurred */
 //gpio_put( TEST_OUTPUT_GP, 1 ); busy_wait_us_32(5);
 //gpio_put( TEST_OUTPUT_GP, 0 );
 
-	  /* Switch the data bus GPIOs back to pointing from ZX toward the pico */
-	  gpio_set_dir_in_masked( DBUS_GP_MASK );
+	/* Switch the data bus GPIOs back to pointing from ZX toward the pico */
+	gpio_set_dir_in_masked( DBUS_GP_MASK );
 
-	  /* Put the level shifters back to reading from the ZX */
-	  gpio_put(DIR_GP, 1);
+	/* Put the level shifters back to reading from the ZX */
+	gpio_put(DIR_GP, 1);
 
-          /* 245ns (360MHz) after CAS fell, 40ns after CAS rose again */
+	/* 245ns (360MHz) after CAS fell, 40ns after CAS rose again */
 
 /* 264ns after CAS - data is removed from the bus and we're going to wait for CAS again. */
 //gpio_put( TEST_OUTPUT_GP, 1 ); busy_wait_us_32(5);
@@ -302,61 +300,58 @@ int main()
 /* CAS will fall again 288ns after the original fall. That's about 24ns from now. */
 __asm volatile ("nop"); // 1 NOP leave the (c) ok, so Z80 still working
 __asm volatile ("nop"); // Another NOP stops the (c) working
-          /*
-	   * CAS has gone up showing ZX has collected our data. At this point
-	   * in page mode CAS is just about to go low again. Not much time, we
-	   * need to get back to the top of the loop and pick up the next
-	   * column address which is going on the bus just about now.
-	   * CAS stays high for about 75ns.
-	   */
-	}
-	else
-	{
-	  /*
-	   * We know this is a write. We already have the data from the bus, so store it.
-	   * We had the row address, now we have the column address.
-	   *
-	   * The ULA doesn't do writes, only the Z80. The Z80 runs at a much less
-	   * demanding speed than the ULA, so timings here don't matter too much
-	   */
-
-	  /* Store the entire value from the GPIOs, masking is done on the read cycle */
-          *(store_ptr+(addr_requested + (uint8_t)(gpios_state & ADDR_GP_MASK))) = gpios_state;
-
-	  /*
-	   * 65ns (360MHz) after CAS, 145ns (360MHz) after WR went low.
-	   * WR stays low another 120ns.
-	   */
-	}
-
+       /*
+	* CAS has gone up showing ZX has collected our data. At this point
+	* in page mode CAS is just about to go low again. Not much time, we
+	* need to get back to the top of the loop and pick up the next
+	* column address which is going on the bus just about now.
+	* CAS stays high for about 75ns.
+	*/
       }
-      else if( (gpios_state & RAS_GP_MASK) == 0 )
+      else
       {
-	/* 50ns (360MHz) or 75ns (270MHz) after RAS, so 20ish instructions */
-
-	/* RAS was high and it's gone low - there's a new row value on the address bus */
-
 	/*
-	 * Pick up the address bus value.
-	 */
-	addr_requested = (uint16_t)(128 * (uint8_t)(gpios_state & ADDR_GP_MASK));
-    
-	/*
-	 * 65ns (360MHz) or 90ns (270MHz) after RAS, so 25ish instructions.
-	 * We've got the row part of the address, now loop back to the top
-	 * and wait for CAS to go low.
+	 * We know this is a write. We already have the data from the bus, so store it.
+	 * We had the row address, now we have the column address.
 	 *
-	 * The ULA book says (pg122, para 3) that RAS to CAS delay is 78ns
-	 * for ULA video memory reads. According to my 'scope it's always
-	 * between 92ns and 100ns, including the blipping of the test signal
-	 * GPIO line, which adds 6 instructions (up, nop, down, twice). So
-	 * that's 17ns at 360MHz, or 22ns at 270MHz. 100ns less 22ns is 78ns,
-	 * so that's just about right when the test blips are removed.
+	 * The ULA doesn't do writes, only the Z80. The Z80 runs at a much less
+	 * demanding speed than the ULA, so timings here don't matter too much
+	 */
+
+	/* Store the entire value from the GPIOs, masking is done on the read cycle */
+	*(store_ptr+(addr_requested + (uint8_t)(gpios_state & ADDR_GP_MASK))) = gpios_state;
+
+	/*
+	 * 65ns (360MHz) after CAS, 145ns (360MHz) after WR went low.
+	 * WR stays low another 120ns.
 	 */
       }
 
-    } /* endif a GPIO has gone low */
+    }
+    else if( (gpios_state & RAS_GP_MASK) == 0 )
+    {
+      /* RAS was high and it's gone low - there's a new row value on the address bus */
+      
+      /* 50ns (360MHz) or 75ns (270MHz) after RAS, so 20ish instructions */
 
+      /*
+       * Pick up the address bus value.
+       */
+      addr_requested = (uint16_t)(128 * (uint8_t)(gpios_state & ADDR_GP_MASK));
+    
+      /*
+       * 65ns (360MHz) or 90ns (270MHz) after RAS, so 25ish instructions.
+       * We've got the row part of the address, now loop back to the top
+       * and wait for CAS to go low.
+       *
+       * The ULA book says (pg122, para 3) that RAS to CAS delay is 78ns
+       * for ULA video memory reads. According to my 'scope it's always
+       * between 92ns and 100ns, including the blipping of the test signal
+       * GPIO line, which adds 6 instructions (up, nop, down, twice). So
+       * that's 17ns at 360MHz, or 22ns at 270MHz. 100ns less 22ns is 78ns,
+       * so that's just about right when the test blips are removed.
+       */
+    }
 
     previous_gpios = gpios_state & STROBE_MASK;
 
