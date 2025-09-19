@@ -207,7 +207,7 @@ int main()
    *
    * Address bus at RAS time
    */
-  register uint16_t ras_abus = 0;
+  uint16_t ras_abus = 0;
 
   /*
    * Malloc a store for the ZX memory. We only need bytes because we only need to store
@@ -215,30 +215,12 @@ int main()
    * databus read which is 29 bits in a uint32. The unused bits take up room, but that's
    * less inefficient than trying to mask out the ones we need.
    */
-  register uint32_t *store_ptr = malloc(STORE_SIZE*sizeof(uint32_t));
+  uint32_t *store_ptr = malloc(STORE_SIZE*sizeof(uint32_t));
 
-#define TEST_KNOWN_STORE 0
-#if TEST_KNOWN_STORE
-  {
-    uint32_t i;
+  uint32_t previous_gpios = STROBE_MASK;
 
-    /* Fill wth 0x03, which is no flash, no bright, black paper, white ink */
-    for( i=0; i<STORE_SIZE; i++ )
-      *(store_ptr+i) = (uint32_t)(0x39<<DBUS_ROTATE)&DBUS_GP_MASK;
-
-    /*
-     * Trying to set patterns in here expecting to see them on screen doesn't
-     * really work. The address lines aren't lined up in the hardware as
-     * A0, A1, A2, etc. Everything gets mixed up.
-     */
-    *(store_ptr+0) = (uint32_t)(0x07<<DBUS_ROTATE);
-  }
-#endif
-
-  register uint32_t previous_gpios = STROBE_MASK;
-
-  register uint32_t gpios_state;
-  register uint16_t addr_requested = 0;
+  uint32_t gpios_state;
+  uint16_t addr_requested = 0;
   while(1)
   {
     /* gpios_state is state of all 29 GPIOs in one value */
