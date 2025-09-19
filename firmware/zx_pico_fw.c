@@ -225,6 +225,7 @@ int main()
   {
     /* gpios_state is state of all 29 GPIOs in one value */
 
+    /* This loop escapes in about 25ns after RAS or CAS goes low (270MHz), so 7ish instructions */
     while( (previous_gpios & (~ ((gpios_state = gpio_get_all()) ) & STROBE_MASK )) == 0 )
       previous_gpios = gpios_state;
   
@@ -313,11 +314,11 @@ __asm volatile ("nop"); // Another NOP stops the (c) working
 	{
 	  /*
 	   * We know this is a write. We already have the data from the bus, so store it.
+	   * We had the row address, now we have the column address.
+	   *
+	   * The ULA doesn't do writes, only the Z80. The Z80 runs at a much less
+	   * demanding speed than the ULA, so timings here don't matter too much
 	   */
-
-	  /* 45ns (360MHz) after CAS */
-
-	  /* We had the row address, now we have the column address */
 
 	  /* Store the entire value from the GPIOs, masking is done on the read cycle */
           *(store_ptr+(addr_requested + (uint8_t)(gpios_state & ADDR_GP_MASK))) = gpios_state;
@@ -331,7 +332,7 @@ __asm volatile ("nop"); // Another NOP stops the (c) working
       }
       else if( (gpios_state & RAS_GP_MASK) == 0 )
       {
-	/* 50ns (360MHz) afer RAS */
+	/* 50ns (360MHz) or 75ns (270MHz) after RAS, so 20ish instructions */
 
 	/* RAS was high and it's gone low - there's a new row value on the address bus */
 
@@ -340,7 +341,18 @@ __asm volatile ("nop"); // Another NOP stops the (c) working
 	 */
 	addr_requested = (uint16_t)(128 * (uint8_t)(gpios_state & ADDR_GP_MASK));
     
-	/* 65ns (360MHz) after RAS. We have another 35ns before CAS goes low. */
+	/*
+	 * 65ns (360MHz) or 90ns (270MHz) after RAS, so 25ish instructions.
+	 * We've got the row part of the address, now loop back to the top
+	 * and wait for CAS to go low.
+	 *
+	 * The ULA book says (pg122, para 3) that RAS to CAS delay is 78ns
+	 * for ULA video memory reads. According to my 'scope it's always
+	 * between 92ns and 100ns, including the blipping of the test signal
+	 * GPIO line, which adds 6 instructions (up, nop, down, twice). So
+	 * that's 17ns at 360MHz, or 22ns at 270MHz. 100ns less 22ns is 78ns,
+	 * so that's just about right when the test blips are removed.
+	 */
       }
 
     } /* endif a GPIO has gone low */
