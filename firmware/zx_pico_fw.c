@@ -245,14 +245,14 @@ int main()
       /* gpios_state is from the point CAS went low */
       if( gpios_state & WR_GP_MASK )
       {
+	/* 50ns (360MHz), 90ns (270MHz) after CAS */
+
 	/*
-	 * We know this is a read. Get the data from store and get it on the bus before
+	 * A read. Get the data from store and get it on the bus before
 	 * CAS goes back up
 	 */
 	  
-	/* 50ns (360MHz) after CAS */
-	  
-	/* Prime the level shifters to send to the ZX. gpio_put(DIR_GP, 0); required, clr_mask is faster */
+	/* Prime the level shifter to send to the ZX. gpio_put(DIR_GP, 0); required, clr_mask is faster */
 	gpio_clr_mask(DIR_GP_MASK);
 
 	/* 55ns (360MHz) after CAS */
@@ -263,14 +263,12 @@ int main()
 	 */
 	gpio_set_dir_out_masked( DBUS_GP_MASK );
 
-	/* 60ns (360MHz) after CAS */
+	/* 60ns (360MHz), 110ns (270MHz) after CAS */
 
-	/* Put the stored value on the output data bus */
+	/* Put the stored value on the output data bus - this is the slow bit */
 	gpio_put_masked( DBUS_GP_MASK, *(store_ptr+(addr_requested + (uint8_t)(gpios_state & ADDR_GP_MASK))) );
 
-	/* Data is available - 4116 spec says we need to be here within 100ns of CAS going low. */
-
-	/* 120ns (360MHz) after CAS */
+        /* Data is available, 120ns (360MHz), 130ns (270MHz) after CAS. Question mark on the 360MHZ value here */
        
 /* Target is to have the data on the bus at 216ns after CAS */
 /* 141ns after CAS - data is already available. We have about 75ns spare here. */
@@ -279,6 +277,9 @@ int main()
 
 	/* Wait for CAS to go high indicating ZX has picked up the data */
 	while( (gpio_get_all() & CAS_GP_MASK) == 0 );
+gpio_put( TEST_OUTPUT_GP, 1 );
+__asm volatile ("nop");
+gpio_put( TEST_OUTPUT_GP, 0 );
 
 /* 242ns after CAS - data about to be removed from the bus. */
 /* That's correct, it was there at the 216ns after CAS point when dataLatch occurred */
