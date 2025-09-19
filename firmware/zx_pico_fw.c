@@ -232,9 +232,9 @@ int main()
     /* This condition is 2 instructions */
     if( ((gpios_state & CAS_GP_MASK) == 0) )
     {
-      /* 40ns (360MHz) after CAS */
-
       /* CAS low edge found. */
+
+      /* 40ns (360MHz), 50ns (270MHz) after CAS */
 
       /*
        * Column address is on the address bus. Add that to the row address we've
@@ -310,9 +310,11 @@ __asm volatile ("nop"); // Another NOP stops the (c) working
       }
       else
       {
+	/* 75ns (270MHz) after CAS */
+
 	/*
-	 * We know this is a write. We already have the data from the bus, so store it.
-	 * We had the row address, now we have the column address.
+	 * A write. We already have the data from the bus, so store it.
+	 * We had the row address, now we have the column address as well.
 	 *
 	 * The ULA doesn't do writes, only the Z80. The Z80 runs at a much less
 	 * demanding speed than the ULA, so timings here don't matter too much
@@ -322,8 +324,9 @@ __asm volatile ("nop"); // Another NOP stops the (c) working
 	*(store_ptr+(addr_requested + (uint8_t)(gpios_state & ADDR_GP_MASK))) = gpios_state;
 
 	/*
-	 * 65ns (360MHz) after CAS, 145ns (360MHz) after WR went low.
-	 * WR stays low another 120ns.
+	 * 65ns (360MHz), 100ns (270MHz) after CAS. The write is complete
+	 * and we loop back to get the next RAS. There might be a little
+	 * time to spare here.
 	 */
       }
 
