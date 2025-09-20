@@ -283,25 +283,25 @@ int main()
         /* Data is available, 120ns (360MHz), 130ns (270MHz) after CAS. Question mark on the 360MHZ value here */
        
 	/* Wait for CAS to go high indicating ZX has picked up the data */
-//	while( (gpio_get_all() & CAS_GP_MASK) == 0 );
-// 65 NOPs at 270MHz makes the Z80 work again, that's 240ns
-
-	_10_NOPS_;
-	_10_NOPS_;
-	_10_NOPS_;
-	_10_NOPS_;
-	_10_NOPS_;
-	_10_NOPS_;
-
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-
+	while( (gpio_get_all() & CAS_GP_MASK) == 0 );
 
 #if 0
-// Another 40 NOPS, the Z80 is OK. Any more it's unhappy
+        // 65 NOPs at 270MHz makes the Z80 work again, that's 240ns
+	_10_NOPS_;
+	_10_NOPS_;
+	_10_NOPS_;
+	_10_NOPS_;
+	_10_NOPS_;
+	_10_NOPS_;
+
+	__asm volatile ("nop");
+	__asm volatile ("nop");
+	__asm volatile ("nop");
+	__asm volatile ("nop");
+	__asm volatile ("nop");
+
+	
+        // Another 40 NOPS, the Z80 is OK. Any more it's unhappy
 	_10_NOPS_;
 	_10_NOPS_;
 	_10_NOPS_;
@@ -320,14 +320,6 @@ __asm volatile ("nop");
 gpio_put( TEST_OUTPUT_GP, 1 );
 __asm volatile ("nop");
 gpio_put( TEST_OUTPUT_GP, 0 );
-	/* Wait for CAS to go high */
-	while( (gpio_get_all() & CAS_GP_MASK) == 0 );
-
-	if( (gpio_get_all() & RAS_GP_MASK) == 0 )
-	{
-	  /* RAS has remained low, so we're in page mode. Only the ULA does this */
-
-	}
 
        /*
 	* CAS has gone up showing ZX has collected our data. At this point
