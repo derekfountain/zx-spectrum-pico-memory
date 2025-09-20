@@ -1,5 +1,42 @@
 /*
+ * ZX-Pico RAM Emulation, a Raspberry Pi Pico based Spectrum DRAM device
+ * Copyright (C) 2025 Derek Fountain, Andrew Menadue
+ * 
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
 
+/*
+ * export PICO_SDK_PATH=/home/derek/BEETLE/Derek/dev/Pico/pico-sdk-v2.x
+ *
+ * cmake ..
+ * cmake -DCMAKE_BUILD_TYPE=Debug ..
+ * make -j10
+ *
+ * sudo openocd -f interface/picoprobe.cfg -f target/rp2040.cfg -c "program ./pico1.elf verify reset exit"
+ * sudo openocd -f interface/picoprobe.cfg -f target/rp2040.cfg
+ * sudo openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000" -c "program zx_pico_fw.elf verify reset exit"
+ * sudo openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000"
+ *
+ * gdb-multiarch ./pico1.elf
+ *  target remote localhost:3333
+ *  load
+ *  monitor reset init
+ *  continue
+ */
+
+/*
 Idealised psuedo code, without even the most basic optimisations:
 
 change_shifter_direction( FROM_ZX )                // dbus is primed for reading
@@ -73,7 +110,7 @@ start with RAS and CAS both high
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "pico/binary_info.h"
-#include "hardware/vreg.h"
+#include "hardware/clocks.h"
 
 const uint8_t LED_PIN = PICO_DEFAULT_LED_PIN;
 
