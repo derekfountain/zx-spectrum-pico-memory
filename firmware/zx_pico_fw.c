@@ -20,14 +20,14 @@
 /*
  * export PICO_SDK_PATH=/home/derek/BEETLE/Derek/dev/Pico/pico-sdk-v2.x
  *
- * cmake ..
- * cmake -DCMAKE_BUILD_TYPE=Debug ..
+ * cmake -DPICO_BOARD=pico2 ..
+ * cmake -DCMAKE_BUILD_TYPE=Debug -DPICO_BOARD=pico2 ..
  * make -j10
  *
  * sudo openocd -f interface/picoprobe.cfg -f target/rp2040.cfg -c "program ./pico1.elf verify reset exit"
  * sudo openocd -f interface/picoprobe.cfg -f target/rp2040.cfg
- * sudo openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000" -c "program zx_pico_fw.elf verify reset exit"
- * sudo openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000"
+ * sudo openocd -f interface/cmsis-dap.cfg -f target/rp2350.cfg -c "adapter speed 5000" -c "program zx_pico_fw.elf verify reset exit"
+ * sudo openocd -f interface/cmsis-dap.cfg -f target/rp2350.cfg -c "adapter speed 5000"
  *
  * gdb-multiarch ./pico1.elf
  *  target remote localhost:3333
@@ -91,6 +91,7 @@ start with RAS and CAS both high
 #define OVERCLOCK 270000
 //#define OVERCLOCK 360000
 
+/* I think a NOP on the RP2350 runs in half a clock cycle? */
 #define _10_NOPS_  __asm volatile ("nop"); \
                    __asm volatile ("nop"); \
                    __asm volatile ("nop"); \
@@ -248,8 +249,6 @@ int main()
    */
   gpio_put(DIR_GP, 1);
 
-
-
   /*
    * This is reset outside the main loop because it holds the row value during
    * successive page mode reads. We mustn't lose it.
@@ -278,6 +277,12 @@ int main()
     while( (previous_gpios & ( ~((gpios_state = gpio_get_all())) & STROBE_MASK )) == 0 )
       previous_gpios = gpios_state;
   
+gpio_put( TEST_OUTPUT_GP, 1 );
+__asm volatile ("nop");
+__asm volatile ("nop");
+gpio_put( TEST_OUTPUT_GP, 0 );
+
+
     /* This condition is 2 instructions */
     if( ((gpios_state & CAS_GP_MASK) == 0) )
     {
@@ -322,30 +327,6 @@ int main()
 	/* Wait for CAS to go high indicating ZX has picked up the data */
 	while( (gpio_get_all() & CAS_GP_MASK) == 0 );
 
-#if 0
-        // 65 NOPs at 270MHz makes the Z80 work again, that's 240ns
-	_10_NOPS_;
-	_10_NOPS_;
-	_10_NOPS_;
-	_10_NOPS_;
-	_10_NOPS_;
-	_10_NOPS_;
-
-	__asm volatile ("nop");
-	__asm volatile ("nop");
-	__asm volatile ("nop");
-	__asm volatile ("nop");
-	__asm volatile ("nop");
-
-	
-        // Another 40 NOPS, the Z80 is OK. Any more it's unhappy
-	_10_NOPS_;
-	_10_NOPS_;
-	_10_NOPS_;
-	_10_NOPS_;
-#endif
-
-
 	/* Switch the data bus GPIOs back to pointing from ZX toward the pico */
 	gpio_set_dir_in_masked( DBUS_GP_MASK );
 
@@ -353,10 +334,6 @@ int main()
 	gpio_put(DIR_GP, 1);
 
 	/* 245ns (360MHz) after CAS fell, 40ns after CAS rose again */
-
-gpio_put( TEST_OUTPUT_GP, 1 );
-__asm volatile ("nop");
-gpio_put( TEST_OUTPUT_GP, 0 );
 
        /*
 	* CAS has gone up showing ZX has collected our data. At this point
