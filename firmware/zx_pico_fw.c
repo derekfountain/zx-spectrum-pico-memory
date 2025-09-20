@@ -54,6 +54,18 @@ start with RAS and CAS both high
 #define OVERCLOCK 270000
 //#define OVERCLOCK 360000
 
+#define _10_NOPS_  __asm volatile ("nop"); \
+                   __asm volatile ("nop"); \
+                   __asm volatile ("nop"); \
+                   __asm volatile ("nop"); \
+                   __asm volatile ("nop"); \
+                   __asm volatile ("nop"); \
+                   __asm volatile ("nop"); \
+                   __asm volatile ("nop"); \
+                   __asm volatile ("nop"); \
+                   __asm volatile ("nop")
+
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -226,7 +238,7 @@ int main()
     /* gpios_state is state of all 29 GPIOs in one value */
 
     /* This loop escapes in about 25ns after RAS or CAS goes low (270MHz), so 7ish instructions */
-    while( (previous_gpios & (~ ((gpios_state = gpio_get_all()) ) & STROBE_MASK )) == 0 )
+    while( (previous_gpios & ( ~((gpios_state = gpio_get_all())) & STROBE_MASK )) == 0 )
       previous_gpios = gpios_state;
   
     /* This condition is 2 instructions */
@@ -272,84 +284,29 @@ int main()
        
 	/* Wait for CAS to go high indicating ZX has picked up the data */
 //	while( (gpio_get_all() & CAS_GP_MASK) == 0 );
-// 70 NOPs at 270MHz makes the Z80 work again, that's 259ns
+// 65 NOPs at 270MHz makes the Z80 work again, that's 240ns
+
+	_10_NOPS_;
+	_10_NOPS_;
+	_10_NOPS_;
+	_10_NOPS_;
+	_10_NOPS_;
+	_10_NOPS_;
 
 __asm volatile ("nop");
 __asm volatile ("nop");
 __asm volatile ("nop");
 __asm volatile ("nop");
 __asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
 
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
 
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
-__asm volatile ("nop");
+#if 0
+// Another 40 NOPS, the Z80 is OK. Any more it's unhappy
+	_10_NOPS_;
+	_10_NOPS_;
+	_10_NOPS_;
+	_10_NOPS_;
+#endif
 
 
 	/* Switch the data bus GPIOs back to pointing from ZX toward the pico */
@@ -360,9 +317,18 @@ __asm volatile ("nop");
 
 	/* 245ns (360MHz) after CAS fell, 40ns after CAS rose again */
 
-/* CAS will fall again 288ns after the original fall. That's about 24ns from now. */
-__asm volatile ("nop"); // 1 NOP leave the (c) ok, so Z80 still working
-__asm volatile ("nop"); // Another NOP stops the (c) working
+gpio_put( TEST_OUTPUT_GP, 1 );
+__asm volatile ("nop");
+gpio_put( TEST_OUTPUT_GP, 0 );
+	/* Wait for CAS to go high */
+	while( (gpio_get_all() & CAS_GP_MASK) == 0 );
+
+	if( (gpio_get_all() & RAS_GP_MASK) == 0 )
+	{
+	  /* RAS has remained low, so we're in page mode. Only the ULA does this */
+
+	}
+
        /*
 	* CAS has gone up showing ZX has collected our data. At this point
 	* in page mode CAS is just about to go low again. Not much time, we
