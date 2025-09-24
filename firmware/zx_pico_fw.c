@@ -88,8 +88,9 @@ start with RAS and CAS both high
 
 //#define OVERCLOCK 200000
 //#define OVERCLOCK 250000
-#define OVERCLOCK 270000
-//#define OVERCLOCK 360000
+//#define OVERCLOCK 270000
+//#define OVERCLOCK 312000
+#define OVERCLOCK 360000
 
 /* I think a NOP on the RP2350 runs in half a clock cycle? */
 #define _10_NOPS_  __asm volatile ("nop"); \
@@ -112,6 +113,7 @@ start with RAS and CAS both high
 #include "hardware/gpio.h"
 #include "pico/binary_info.h"
 #include "hardware/clocks.h"
+#include "hardware/vreg.h"
 
 const uint8_t LED_PIN = PICO_DEFAULT_LED_PIN;
 
@@ -176,7 +178,7 @@ int main()
   bi_decl(bi_program_description("ZX Spectrum Lower memory Pico board binary."));
 
 #ifdef OVERCLOCK
-#if OVERCLOCK > 270000
+#if OVERCLOCK > 312000
   vreg_set_voltage(VREG_VOLTAGE_1_20);
   sleep_ms(1000);
 #endif
@@ -276,9 +278,9 @@ int main()
     /* This loop escapes in about 35ns after RAS or CAS goes low (270MHz) */
     while( (previous_gpios & ( ~((gpios_state = gpio_get_all())) & STROBE_MASK )) == 0 )
       previous_gpios = gpios_state;
-gpio_put( TEST_OUTPUT_GP, 1 );
-__asm volatile ("nop");
-gpio_put( TEST_OUTPUT_GP, 0 );
+//gpio_put( TEST_OUTPUT_GP, 1 );
+//__asm volatile ("nop");
+//gpio_put( TEST_OUTPUT_GP, 0 );
   
     /* This condition is 2 instructions */
     if( ((gpios_state & CAS_GP_MASK) == 0) )
@@ -333,13 +335,13 @@ gpio_put( TEST_OUTPUT_GP, 0 );
 
 	/* 245ns (360MHz) after CAS fell, 40ns after CAS rose again */
 
-       /*
-	* CAS has gone up showing ZX has collected our data. At this point
-	* in page mode CAS is just about to go low again. Not much time, we
-	* need to get back to the top of the loop and pick up the next
-	* column address which is going on the bus just about now.
-	* CAS stays high for about 75ns.
-	*/
+	/*
+	 * CAS has gone up showing ZX has collected our data. At this point
+	 * in page mode CAS is just about to go low again. Not much time, we
+	 * need to get back to the top of the loop and pick up the next
+	 * column address which is going on the bus just about now.
+	 * CAS stays high for about 75ns.
+	 */
 	
 	/* Re-read the GPIOs state, CAS is high now */
 	gpios_state = gpio_get_all();
