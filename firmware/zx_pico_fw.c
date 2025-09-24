@@ -273,19 +273,17 @@ int main()
   {
     /* gpios_state is state of all 29 GPIOs in one value */
 
-    /* This loop escapes in about 25ns after RAS or CAS goes low (270MHz), so 7ish instructions */
+    /* This loop escapes in about 35ns after RAS or CAS goes low (270MHz) */
     while( (previous_gpios & ( ~((gpios_state = gpio_get_all())) & STROBE_MASK )) == 0 )
       previous_gpios = gpios_state;
-  
 gpio_put( TEST_OUTPUT_GP, 1 );
 __asm volatile ("nop");
-__asm volatile ("nop");
 gpio_put( TEST_OUTPUT_GP, 0 );
-
-
+  
     /* This condition is 2 instructions */
     if( ((gpios_state & CAS_GP_MASK) == 0) )
     {
+
       /* CAS low edge found. */
 
       /* 40ns (360MHz), 50ns (270MHz) after CAS */
@@ -342,6 +340,9 @@ gpio_put( TEST_OUTPUT_GP, 0 );
 	* column address which is going on the bus just about now.
 	* CAS stays high for about 75ns.
 	*/
+	
+	/* Re-read the GPIOs state, CAS is high now */
+	gpios_state = gpio_get_all();
       }
       else
       {
@@ -356,7 +357,8 @@ gpio_put( TEST_OUTPUT_GP, 0 );
 	 */
 
 	/* Store the entire value from the GPIOs, masking is done on the read cycle */
-	*(store_ptr+(addr_requested + (uint8_t)(gpios_state & ADDR_GP_MASK))) = gpios_state;
+        addr_requested += (uint8_t)(gpios_state & ADDR_GP_MASK);
+	*(store_ptr+addr_requested) = gpios_state;
 
 	/*
 	 * 65ns (360MHz), 100ns (270MHz) after CAS. The write is complete
@@ -370,7 +372,7 @@ gpio_put( TEST_OUTPUT_GP, 0 );
     {
       /* RAS was high and it's gone low - there's a new row value on the address bus */
       
-      /* 50ns (360MHz) or 75ns (270MHz) after RAS, so 20ish instructions */
+      /* 55ns (270MHz) after RAS */
 
       /*
        * Pick up the address bus value.
@@ -378,7 +380,8 @@ gpio_put( TEST_OUTPUT_GP, 0 );
       addr_requested = (uint16_t)(128 * (uint8_t)(gpios_state & ADDR_GP_MASK));
     
       /*
-       * 65ns (360MHz) or 90ns (270MHz) after RAS, so 25ish instructions.
+       * 60ns (270MHz) after RAS.
+       *
        * We've got the row part of the address, now loop back to the top
        * and wait for CAS to go low.
        *
