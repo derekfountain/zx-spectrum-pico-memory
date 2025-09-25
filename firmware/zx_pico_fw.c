@@ -275,9 +275,12 @@ int main()
        
 	/*
 	 * Wait for RAS or CAS to go high indicating ZX has picked up the data. When it's the
-	 * ULA doing the pairs of video data reads in page mode it's RAS I need to look for here
+	 * ULA doing the pairs of video data reads in page mode it's RAS I need to look for here.
+	 * This sets the previous_gpios value, then uses a continue to get back to the top.
+	 * This skips the drop down to the bottom and the assignment to previous_gpios that's
+	 * down there. It's very slightly quicker doing it this way.
 	 */
-	while( ((gpios_state=gpio_get_all()) & STROBE_MASK) == 0 );
+	while( ((previous_gpios=gpio_get_all()) & STROBE_MASK) == 0 );
 
 	/* Switch the data bus GPIOs back to pointing from ZX toward the pico */
 	gpio_set_dir_in_masked( DBUS_GP_MASK );
@@ -291,6 +294,7 @@ int main()
 	 * get back to the top of the loop and pick up the next column address which
 	 * is going on the bus just about now.
 	 */
+	continue;
       }
       else
       {
