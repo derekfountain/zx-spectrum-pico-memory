@@ -133,17 +133,6 @@ uint32_t *store_ptr;
 
 void __time_critical_func(core1_main)( void )
 {
-  /* All interrupts off in this core, the IO emulation won't work with interrupts enabled */
-  busy_wait_ms(5000);
-  irq_set_mask_enabled( 0xFFFFFFFF, 0 );  
-
-  while(1)
-  {
-    for( uint32_t i = 0; i<256; i++ )
-      *(store_ptr+i) = 0x55555555;
-
-    busy_wait_ms(500);
-  };
 }
 
 int main()
@@ -235,7 +224,7 @@ int main()
   store_ptr = malloc(STORE_SIZE*sizeof(uint32_t));
 
   /* Init complete, run 2nd core code */
-  multicore_launch_core1( core1_main ); 
+  /* multicore_launch_core1( core1_main ); */
 
   uint32_t previous_gpios = STROBE_MASK;
 
