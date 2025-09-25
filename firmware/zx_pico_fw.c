@@ -277,7 +277,7 @@ int main()
 	 * Wait for RAS or CAS to go high indicating ZX has picked up the data. When it's the
 	 * ULA doing the pairs of video data reads in page mode it's RAS I need to look for here
 	 */
-	while( (gpio_get_all() & STROBE_MASK) == 0 );
+	while( ((gpios_state=gpio_get_all()) & STROBE_MASK) == 0 );
 
 	/* Switch the data bus GPIOs back to pointing from ZX toward the pico */
 	gpio_set_dir_in_masked( DBUS_GP_MASK );
@@ -291,9 +291,6 @@ int main()
 	 * get back to the top of the loop and pick up the next column address which
 	 * is going on the bus just about now.
 	 */
-	
-	/* Re-read the GPIOs state, CAS is high now */
-	gpios_state = gpio_get_all();
       }
       else
       {
