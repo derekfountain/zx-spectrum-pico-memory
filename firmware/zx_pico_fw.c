@@ -324,8 +324,8 @@ int main()
 
         /* Data is available, 120ns (360MHz), 130ns (270MHz) after CAS. Question mark on the 360MHZ value here */
        
-	/* Wait for CAS to go high indicating ZX has picked up the data */
-	while( (gpio_get_all() & CAS_GP_MASK) == 0 );
+	/* Wait for RAS or CAS to go high indicating ZX has picked up the data */
+	while( (gpio_get_all() & STROBE_MASK) == 0 );
 
 	/* Switch the data bus GPIOs back to pointing from ZX toward the pico */
 	gpio_set_dir_in_masked( DBUS_GP_MASK );
