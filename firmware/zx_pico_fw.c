@@ -161,6 +161,7 @@ int main()
   gpio_set_slew_rate(TEST_OUTPUT_GP, GPIO_SLEW_RATE_FAST);
   gpio_set_drive_strength(TEST_OUTPUT_GP, GPIO_DRIVE_STRENGTH_12MA);
 
+#if 0
   gpio_init(LED_PIN);
   gpio_set_dir(LED_PIN, GPIO_OUT);
   int signal;
@@ -172,6 +173,7 @@ int main()
     busy_wait_us_32(250000);
   }
   gpio_put(LED_PIN, 1);
+#endif
 
   /* Pull the buses to zeroes */
   gpio_init( A0_GP ); gpio_set_dir(A0_GP, GPIO_IN); gpio_pull_down( A0_GP );
@@ -205,14 +207,6 @@ int main()
    * unless we want to put our data on the bus.
    */
   gpio_put(DIR_GP, 1);
-
-  /*
-   * This is reset outside the main loop because it holds the row value during
-   * successive page mode reads. We mustn't lose it.
-   *
-   * Address bus at RAS time
-   */
-  uint16_t ras_abus = 0;
 
   /*
    * Malloc a store for the ZX memory. We only need bytes because we only need to store
