@@ -36,51 +36,6 @@
  *  continue
  */
 
-/*
-Idealised psuedo code, without even the most basic optimisations:
-
-change_shifter_direction( FROM_ZX )                // dbus is primed for reading
-
-start with RAS and CAS both high
-
-:SCAN
-  current_ras := read_gpio(RAS)
-
-  while(1)
-    read GPIOs
-    if CAS is low                       // CAS is always high entering this loop, so this is an edge
-      break
-    else if current_ras is high and RAS is low, RAS has gone low
-      ras_addr := address bus on GPIOs
-      current_ras := low
-    else if current_ras is low and RAS is high, RAS has gone high
-      current_ras := high
-
-  cas_addr   := address bus on GPIOs
-  addr := (ras_addr * 128) + cas_addr
-  write_flag := WR GPIO
-
-  if write_flag == DOING_A_READ
-    change_shifter_direction( TOWARDS_ZX )
-    value := store[addr]
-    set_dbus_gpios( value )
-    spin waiting for CAS to go high
-    change_shifter_direction( FROM_ZX )
-    jmp SCAN (with RAS staying low)
-  else
-    value := read_dbus_gpios()
-    store[addr] := value
-    spin waiting for RAS and CAS to go high
-    jmp SCAN
-  endif
-
-  // Note: At the end of a cycle
-  // For reads, the Spectrum always raises CAS before RAS.
-  // For writes, the Spectrum always raises RAS before CAS.
-
-*/
-
-
 /* 1 instruction on the 133MHz microprocessor is 7.5ns */
 /* 1 instruction on the 200MHz microprocessor is 5.0ns */
 /* 1 instruction on the 270MHz microprocessor is 3.7ns */
@@ -275,20 +230,16 @@ int main()
   {
     /* gpios_state is state of all 29 GPIOs in one value */
 
-    /* This loop escapes in about 35ns after RAS or CAS goes low (270MHz) */
+    /* This loop escapes in about 35ns after RAS or CAS goes low (RP2350 360MHz) */
     while( (previous_gpios & ( ~((gpios_state = gpio_get_all())) & STROBE_MASK )) == 0 )
       previous_gpios = gpios_state;
-//gpio_put( TEST_OUTPUT_GP, 1 );
-//__asm volatile ("nop");
-//gpio_put( TEST_OUTPUT_GP, 0 );
   
     /* This condition is 2 instructions */
     if( ((gpios_state & CAS_GP_MASK) == 0) )
     {
-
       /* CAS low edge found. */
 
-      /* 40ns (360MHz), 50ns (270MHz) after CAS */
+      /* 40ns (RP2350 360MHz) after CAS */
 
       /*
        * Column address is on the address bus. Add that to the row address we've
@@ -299,7 +250,7 @@ int main()
       /* gpios_state is from the point CAS went low */
       if( gpios_state & WR_GP_MASK )
       {
-	/* 50ns (360MHz), 90ns (270MHz) after CAS */
+	/* 55ns (RP2350 360MHz) after CAS */
 
 	/*
 	 * A read. Get the data from store and get it on the bus before
@@ -309,22 +260,23 @@ int main()
 	/* Prime the level shifter to send to the ZX. gpio_put(DIR_GP, 0); required, clr_mask is faster */
 	gpio_clr_mask(DIR_GP_MASK);
 
-	/* 55ns (360MHz) after CAS */
-
 	/*
 	 * Switch the data bus GPIOs to point towards the ZX - we do this last to prevent
 	 * pico outputs driving the shifter while that's still in output mode
 	 */
 	gpio_set_dir_out_masked( DBUS_GP_MASK );
 
-	/* 60ns (360MHz), 110ns (270MHz) after CAS */
+	/* 70ns (RP2350 360MHz) after CAS */
 
 	/* Put the stored value on the output data bus - this is the slow bit */
 	gpio_put_masked( DBUS_GP_MASK, *(store_ptr+(addr_requested + (uint8_t)(gpios_state & ADDR_GP_MASK))) );
 
-        /* Data is available, 120ns (360MHz), 130ns (270MHz) after CAS. Question mark on the 360MHZ value here */
+        /* Data is available, 100ns (RP2350 360MHz) after CAS */
        
-	/* Wait for RAS or CAS to go high indicating ZX has picked up the data */
+	/*
+	 * Wait for RAS or CAS to go high indicating ZX has picked up the data. When it's the
+	 * ULA doing the pairs of video data reads in page mode it's RAS I need to look for here
+	 */
 	while( (gpio_get_all() & STROBE_MASK) == 0 );
 
 	/* Switch the data bus GPIOs back to pointing from ZX toward the pico */
@@ -333,14 +285,11 @@ int main()
 	/* Put the level shifters back to reading from the ZX */
 	gpio_put(DIR_GP, 1);
 
-	/* 245ns (360MHz) after CAS fell, 40ns after CAS rose again */
-
 	/*
-	 * CAS has gone up showing ZX has collected our data. At this point
-	 * in page mode CAS is just about to go low again. Not much time, we
-	 * need to get back to the top of the loop and pick up the next
-	 * column address which is going on the bus just about now.
-	 * CAS stays high for about 75ns.
+	 * RAS or CAS has gone up showing ZX has collected our data. At this point
+	 * in page mode CAS is just about to go low again. Not much time, we need to
+	 * get back to the top of the loop and pick up the next column address which
+	 * is going on the bus just about now.
 	 */
 	
 	/* Re-read the GPIOs state, CAS is high now */
@@ -348,25 +297,22 @@ int main()
       }
       else
       {
-	/* 75ns (270MHz) after CAS */
-
 	/*
 	 * A write. We already have the data from the bus, so store it.
 	 * We had the row address, now we have the column address as well.
 	 *
 	 * The ULA doesn't do writes, only the Z80. The Z80 runs at a much less
 	 * demanding speed than the ULA, so timings here don't matter too much
+	 *
+	 * RAS goes low, then around 300ns later CAS goes low. This point is about
+	 * 75ns after the CAS.
 	 */
 
 	/* Store the entire value from the GPIOs, masking is done on the read cycle */
         addr_requested += (uint8_t)(gpios_state & ADDR_GP_MASK);
 	*(store_ptr+addr_requested) = gpios_state;
 
-	/*
-	 * 65ns (360MHz), 100ns (270MHz) after CAS. The write is complete
-	 * and we loop back to get the next RAS. There might be a little
-	 * time to spare here.
-	 */
+	/* 90ns (RP2350 360MHz) after CAS, the write is complete */
       }
 
     }
@@ -374,7 +320,7 @@ int main()
     {
       /* RAS was high and it's gone low - there's a new row value on the address bus */
       
-      /* 55ns (270MHz) after RAS */
+      /* 50ns (RP2350 360MHz) after RAS */
 
       /*
        * Pick up the address bus value.
@@ -382,17 +328,10 @@ int main()
       addr_requested = (uint16_t)(128 * (uint8_t)(gpios_state & ADDR_GP_MASK));
     
       /*
-       * 60ns (270MHz) after RAS.
+       * 60ns (RP2350 360MHz) after RAS.
        *
        * We've got the row part of the address, now loop back to the top
        * and wait for CAS to go low.
-       *
-       * The ULA book says (pg122, para 3) that RAS to CAS delay is 78ns
-       * for ULA video memory reads. According to my 'scope it's always
-       * between 92ns and 100ns, including the blipping of the test signal
-       * GPIO line, which adds 6 instructions (up, nop, down, twice). So
-       * that's 17ns at 360MHz, or 22ns at 270MHz. 100ns less 22ns is 78ns,
-       * so that's just about right when the test blips are removed.
        */
     }
 
