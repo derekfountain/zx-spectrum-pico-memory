@@ -69,6 +69,7 @@
 #include "pico/binary_info.h"
 #include "hardware/clocks.h"
 #include "hardware/vreg.h"
+#include "pico/multicore.h"
 
 const uint8_t LED_PIN = PICO_DEFAULT_LED_PIN;
 
@@ -126,7 +127,24 @@ const uint32_t DIR_GP_MASK   = (1<<DIR_GP);
 const uint8_t TEST_INPUT_GP  = 28;  /* Only use one of these */
 const uint8_t TEST_OUTPUT_GP = 28;
 
+/* 16K buffer to emulate the DRAM with */
 #define STORE_SIZE 16384
+uint32_t *store_ptr;
+
+void __time_critical_func(core1_main)( void )
+{
+  /* All interrupts off in this core, the IO emulation won't work with interrupts enabled */
+  busy_wait_ms(5000);
+  irq_set_mask_enabled( 0xFFFFFFFF, 0 );  
+
+  while(1)
+  {
+    for( uint32_t i = 0; i<256; i++ )
+      *(store_ptr+i) = 0x55555555;
+
+    busy_wait_ms(500);
+  };
+}
 
 int main()
 {
@@ -214,7 +232,10 @@ int main()
    * databus read which is 29 bits in a uint32. The unused bits take up room, but that's
    * less inefficient than trying to mask out the ones we need.
    */
-  uint32_t *store_ptr = malloc(STORE_SIZE*sizeof(uint32_t));
+  store_ptr = malloc(STORE_SIZE*sizeof(uint32_t));
+
+  /* Init complete, run 2nd core code */
+  multicore_launch_core1( core1_main ); 
 
   uint32_t previous_gpios = STROBE_MASK;
 
@@ -280,7 +301,7 @@ int main()
 	gpio_set_dir_in_masked( DBUS_GP_MASK );
 
 	/* Put the level shifters back to reading from the ZX */
-	gpio_put(DIR_GP, 1);
+	gpio_set_mask(DIR_GP_MASK);
 
 	/*
 	 * RAS or CAS has gone up showing ZX has collected our data. At this point

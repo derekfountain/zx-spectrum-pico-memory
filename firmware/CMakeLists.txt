@@ -16,7 +16,7 @@ if (TARGET tinyusb_device)
     zx_pico_fw.c
   )
 
-  target_link_libraries(zx_pico_fw pico_stdlib pico_mem_ops)
+  target_link_libraries(zx_pico_fw pico_stdlib pico_mem_ops pico_multicore)
 
   pico_enable_stdio_usb(zx_pico_fw 0)
   pico_enable_stdio_uart(zx_pico_fw 0)
