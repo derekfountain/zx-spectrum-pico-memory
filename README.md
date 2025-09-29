@@ -100,7 +100,7 @@ on it, preventing the Spectrum's keyboard being fitted back in place. If anyone 
 this device it'll probably need redesigning so as to allow the Spectrum to be reassembled. Consider the
 current board to be a functioning prototype.
 
-## Software
+## Software, and the outstanding issue
 
 The software was the main challenge with this project. When Andrew and I started we worked together, writing
 code in C. When it started to hit limitations Andrew branched off and started trying to write parts of the
@@ -116,9 +116,32 @@ the project stalled for 3 years.
 
 When the Pico2 came out, with its faster cores and higher clock speed I picked up the project and had another
 look. I added a few optimisatons, but generally the code I tried on the RP2350 was much the same as that which
-was failing on the RP2040 3 years earlier. Only, on the RP2350, with a little more tuning, it worked.
+was failing on the RP2040 3 years earlier. Only, on the RP2350, with a little more tuning, it worked. Just about.
 
-### Software Approach
+![alt text](notes/zx_dram_emulator.jpg "v1.1")
+
+You can see on there are a number of flickering arefacts on the screen. Those are caused by the DRAM emulator
+not running quite fast enough to deliver page mode reads to the ULA. Each artefact is the result of a missed
+read, the ULA finding essentially random data on its data bus.
+
+The problem is shown on the oscilloscope capture. Yellow is RAS, and that can be seen to go low at the left
+side. CAS, in light blue, goes low twice, then RAS goes high again. Those 2 CAS signals indicate 2 data bytes
+being read by the ULA, one for pixel data, the other for colour data. That bit works fine. So RAS then goes
+high, and then low again. Shortly after RAS goes low the second time (yellow line, centre of the image) CAS
+goes high then low again. That's where the ULA is reading the pixel data for the second time, and that's
+where the problem is. The gap between RAS going low, and CAS going low, is very tight, about 100ns. At that
+point the code needs to spot that RAS has gone low, get the 7 bits of row address from the address bus, then
+get back to the top of the loop quickly enough in order to spot that CAS has gone low again. Most times it
+can manage it, but just occasionally it misses the CAS. That's when an artefact appears on screen.
+
+![alt text](notes/page_mode_read_fast_enough.png "v1.1")
+
+So it's not quite good enough to use, and the software can't run any faster. PIOs might be an option to get
+a bit more speed out of the emulator. Other than that we need to wait for Pico3. :)
+
+[Derek Fountain](https://www.derekfountain.org/), September 2025
+
+
 
 
 
